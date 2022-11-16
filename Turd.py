@@ -27,6 +27,7 @@ checker_queue = queue.LifoQueue(1000)   # Last-in-First-out queue for storing un
 def checkerLoop(queue):
     """ This checks each incoming file. If they are not PNG files they
         get deleted. This will protect against uploading HTML and XSS
+        
         This will be run as a background thread
         """
     while True:

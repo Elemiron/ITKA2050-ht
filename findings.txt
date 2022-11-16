@@ -1,7 +1,9 @@
 ## Harjoitustyöraportti
 
 Palauttaja: Elena Mironenko, elemiron
-Pisteitä yhteensä: 2pt (? En ole varma mitä voin laskea pisteiksi ja ovatko ne oikeat....) 
+Pisteitä yhteensä: 9pt (? En ole varma mitä voin laskea pisteiksi ja ovatko ne oikeat....) 
+9pt löydettyä ongelmaa
+
 Pvm: 16.11.2022
 
 ## Ongelma 1
