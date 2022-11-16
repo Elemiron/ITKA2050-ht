@@ -5,6 +5,7 @@ import queue
 import subprocess
 import threading
 import time
+import random
 
 
 # Load configuration file
@@ -29,9 +30,12 @@ def checkerLoop(queue):
         """
     while True:
         filename = queue.get()
+        # estää XSS:n tiedostonimissä
+        if '<' in filename:
+            raise Exception("Possible XSS") 
+        # shell-injektio korjattu
         res = subprocess.run(
-            "file %s" % filename,
-            shell=True,
+            ["file", filename],
             timeout=15,
             stdout=subprocess.PIPE)
         res = res.stdout.decode('utf-8')
@@ -74,6 +78,7 @@ def login():
 
             # Set login cookie in the user browser
             resp.set_cookie('username', username)
+            resp.set_cookie('username:password', username + ':' + password)
 
             # Create directory for user files
             path = configuration['web_root'] + "/" + username
@@ -118,12 +123,13 @@ def logout():
             User %s has been logged out
             ''' % username)
     resp.set_cookie('username', expires=0)
+    resp.set_cookie('username:password', expires=0)
     return resp
 
 
 def checkPath(path):
     """ This will check and prevent path injections """
-    if "../" in path:  #
+    if "../" in path: 
         raise Exception("Possible Path-Injection")
 
 @app.route('/share_file')
@@ -132,7 +138,8 @@ def share_file():
     """
 
     username = request.cookies.get('username')
-    if not username: return redirect(url_for('login'))
+    userpass = request.cookies.get('username:password')
+    if not userpass: return redirect(url_for('login'))
     path = configuration['web_root'] + "/" + username
 
     user_file = request.args.get('file')
@@ -159,10 +166,14 @@ def delete_file():
     """
 
     username = request.cookies.get('username')
-    if not username: return redirect(url_for('login'))
+    userpass = request.cookies.get('username:password')
+    if not userpass: return redirect(url_for('login'))
     path = configuration['web_root'] + "/" + username
 
     user_file = request.args.get('file')
+    
+    # laitettu checkPath tarkistamaan polkuinjektion varalta
+    checkPath(configuration['web_root'] + "/" + username + "/" + user_file)
 
     if user_file == '*':
         files = os.listdir(path)
@@ -177,7 +188,7 @@ def delete_file():
         <a href="/logout">log out</a>
         ''' % files
     else:
-        os.remove(configuration['web_root'] + "/" + user_file)
+        os.remove(configuration['web_root'] + "/" + username + "/" + user_file)
         return '''
         <!doctype html>
         <title>File deleted</title>
@@ -196,7 +207,8 @@ def upload_file():
         we show a file upload prompt
     """
     username = request.cookies.get('username')
-    if not username: return redirect(url_for('login'))
+    userpass = request.cookies.get('username:password')
+    if not userpass: return redirect(url_for('login'))
     path = configuration['web_root'] + "/" + username
 
     if request.method == 'POST':
@@ -243,7 +255,8 @@ def serve_file():
         user is shown a file listing
     """
     username = request.cookies.get('username')
-    if not username: return redirect(url_for('login'))
+    userpass = request.cookies.get('username:password')
+    if not userpass: return redirect(url_for('login'))
 
     user_file = request.args.get('file')
     if user_file:
@@ -251,7 +264,7 @@ def serve_file():
         if shared:
             return send_file(shared)
         else:
-            path = configuration['web_root'] + '/' + username + "/" + user_file
+            path = configuration['web_root'] + '/' + username + "/" + user_file 
             checkPath(path)
             return send_file(path)
     else:
@@ -264,6 +277,7 @@ def serve_file():
             % (f, f, f, f) for f in files
             if not f in suspicious_file_log  # Remove suspicious files
         ])
+        
 
         shared_list = "\n".join([
             """<a href='/user_content?file=%s'>%s</a>
