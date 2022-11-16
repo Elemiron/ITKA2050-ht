@@ -1,0 +1,161 @@
+## Harjoitustyöraportti
+
+Palauttaja: Elena Mironenko, elemiron
+Pisteitä yhteensä: 
+
+## Ongelma 1
+Tyyppi:   Polkuinjektio
+Sijainti: delete_file()
+Kuvaus:
+
+Aliohjelmassa delete_file ei tarkasteta käyttäjän syöttämää polkua
+millään tavalla. Tämä mahdollistaa sen, että käyttäjä tuhoaa minkä
+tahansa tiedoston, esimerkiksi toisen käyttäjän tiedoston tai vaikkapa
+jonkin järjestelmätiedoston. 
+
+### Esimerkkihyökkäys: 
+
+1) Kirjaudu sisään käyttäjänä "sam".
+2) Tee pyyntö /delete_file?file=../sue/tiedosto.txt
+3) Tulos: Suen tiedosto tuhotaan
+
+### Korjaus:
+
+Commit: <git hash>
+
+Paikka, johon korjaus on tehty, on kommentoitu koodiin. Korjasin tämän kohdan
+laittamalla checkPath(path)-funktion delete_file()-funktioon ennen ehtolauseita.
+Korjaus toimii, koska jos yritetään laittaa osoiteriville "../" tulee virheilmoitus
+eikä mitään poisteta.
+
+
+### Pisteet(2pt)
+
+1pt vian löytämisestä
+1pt vian korjaamisesta
+
+
+...
+
+
+## Ongelma 2
+Tyyppi:   Shell-injektio
+Sijainti: checkerLoop(queue)
+Kuvaus:	  
+
+Aliohjelmassa avataan komentotulkki, jonka kautta avataan tiedosto.
+Aliohjelmassa tarkastetaan vain, että tiedostossa on "JPG" tai "PNG", 
+mutta se ei estä putkittamista tiedoston nimessä. Se ei myöskään
+estä tälläisen tiedoston lataamista ja jakamista sovelluksessa.
+
+### Esimerkkihyökkäys: 
+
+1) Kirjaudu sisään käyttäjänä "sam".
+2) Lataa tietokoneelta tiedosto, jonka nimi on "kissa.jpg;rm *"
+3) Tulos: Koko ohjelma lakkaa olemasta. Kaikki tiedostot hakemistossa
+CourseWork poistuu.
+
+### Korjaus:
+
+Commit: <git hash>
+
+Paikka, johon korjaus on tehty, on kommentoitu koodiin. Korjasin tämän
+kohdan laittamalla komennot taulukkoon ja poistamalla ehdon "shell=True".
+Korjaus toimii, koska tiedostonimissä olevia putkituksia ei enään suoriteta
+komentotulkissa. Vikatyyppi on myös eliminoitu, sillä shell-injektiota ei 
+enään pysty tapahtumaan.
+
+### Pisteet(3pt)
+
+1pt vian löytämisestä
+1pt vian korjaamisesta
+1pt vikatyypin eliminoimisesta
+
+
+...
+
+
+## Ongelma 3
+Tyyppi:   Cookie-haavoittuvuus
+Sijainti: login()
+Kuvaus:
+
+Ohjelmalla ei ole väliä, mistä pyynnöt palvelimelle tulevat. Curlia ja oikeaa 
+cookieta käyttämällä pääsee tekemään sovelluksessa mitä tahansa kenä tahansa käyttäjänä.
+Curlia käyttäessä salasanaa ei kysytä.
+
+### Esimerkkihyökkäys: 
+
+1) Tee palvelimelle pyyntö komentotulkilla: 
+curl 'http://localhost:5000/delete_file?file=*' -H 'Cookie: username=sam'
+2) Tulos: kaikki käyttäjän sam tiedostot tuhoutuvat
+
+### Korjaus:
+
+Commit: <git hash>
+
+Korjaus on tehty yksinkertaisesti laittamalla yhdistelmä käyttäjätunnuksesta ja 
+salasanasta cookieen. Oikeasti salasanaa ei saisi laittaa paljaana cookieseen, vaan 
+se pitäisi hashata jollakin tavalla, mutta tässä ei esimerkin yksinkertaisuuden
+vuoksi ole sitä tehty. Nyt kuitenkaan ei päästä tekemään muista lähteistä, kuin käytössä
+olevasta selaimesta kenä tahansa käyttäjänä tietämättä salasanaa.
+Korjaus toimii, koska salasanaa pitää aina käyttää, kun halutaan yhteys jonkin käyttäjän
+tiedostoihin. Korjaus on tehty kaikkiin kohtiin, joissa kysytään cookieta 'username'. Sen
+sijaan, että aliohjelmissa kysytään username cookieta autentisoimaan käyttäjää, käytetään
+username:password cookieta.
+
+### Pisteet(2pt)
+
+1pt vian löytämisestä
+1pt vian korjaamisesta
+
+
+...
+
+
+## Ongelma 4
+Tyyppi:   XSS
+Sijainti: checkerLoop(queue)
+Kuvaus:
+
+Ohjelmassa tarkistetaan vain, onko tiedoston sisältö kuvadataa, mutta se ei suojaa
+HTML-injektiolta kuvien nimissä.
+
+### Esimerkkihyökkäys:
+
+1) Vaihda kuvan "kissa.jpg" nimeksi sopiva HTML-injektio, esim. <button onmouseover="alert(1)">
+2) Lataa kuva palveluun.
+3) Kuva poistetaan, mutta se tulee poistettujen kuvien listaan ja voi rikkoa koko palvelun.
+
+Commit: <git hash>
+
+Korjaus on tehty yksinkertaisesti niin, että tiedostoja, joissa on merkki '<' ei voi  
+ladata. Korjaus toimii, koska nyt ei pystytä tekemään tiedostonimiä, joissa  
+XSS olisi mahdollista, sillä aloittavaa tagiä ei voida käyttää. 
+
+### Pisteet(2pt)
+
+1pt vian löytämisestä
+1pt vian korjaamisesta
+
+
+...
+
+
+## Ongelma 5
+Tyyppi:   
+Sijainti: 
+Kuvaus:
+
+
+
+### Esimerkkihyökkäys:
+
+
+
+Commit: <git hash>
+
+  
+
+### Pisteet(2pt)
+
