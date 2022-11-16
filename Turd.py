@@ -5,7 +5,9 @@ import queue
 import subprocess
 import threading
 import time
-import random
+import imghdr
+import bleach
+import json
 
 
 # Load configuration file
@@ -25,7 +27,6 @@ checker_queue = queue.LifoQueue(1000)   # Last-in-First-out queue for storing un
 def checkerLoop(queue):
     """ This checks each incoming file. If they are not PNG files they
         get deleted. This will protect against uploading HTML and XSS
-
         This will be run as a background thread
         """
     while True:
@@ -54,12 +55,11 @@ t.start()
 
 ## Here are the system users. Until we have more than 10 users we will
 ## just hardcode them here:
-users = {"lion": "Y_SFX", "sue": "qwwerty", "sam": "ghghghg"}
+users = {"lion": "Y_SFX", "sue": "qwwerty", "sam": "ghghghg" }
 
 @app.route('/login')
 def login():
     """ This route allows user to log in
-
         If user gives a filename that file is sent to user, otherwise
         user is shown a file listing
     """
@@ -76,9 +76,12 @@ def login():
               You can now <a href="/user_content">check your files</a>
               """)
 
+            # Create global variable for user that is logged in and set it to username
+            global logged_user
+            logged_user = username
+
             # Set login cookie in the user browser
             resp.set_cookie('username', username)
-            resp.set_cookie('username:password', username + ':' + password)
 
             # Create directory for user files
             path = configuration['web_root'] + "/" + username
@@ -122,24 +125,27 @@ def logout():
             <h1>System log out</h1>
             User %s has been logged out
             ''' % username)
-    resp.set_cookie('username', expires=0)
-    resp.set_cookie('username:password', expires=0)
+    resp.set_cookie('username', '', expires=0)
+    global logged_user
+    logged_user = ''
     return resp
 
 
 def checkPath(path):
     """ This will check and prevent path injections """
-    if "../" in path: 
-        raise Exception("Possible Path-Injection")
+    normalisoitu = os.path.normpath(path)
+    if not (normalisoitu == path): raise Exception("Possible Path-Injection")
 
+        
 @app.route('/share_file')
 def share_file():
     """ This route handler will allow users to share files
     """
 
     username = request.cookies.get('username')
-    userpass = request.cookies.get('username:password')
-    if not userpass: return redirect(url_for('login'))
+    if (logged_user != username) : 
+        raise Exception("Illegal change of cookies!")
+    if not username: return redirect(url_for('login'))
     path = configuration['web_root'] + "/" + username
 
     user_file = request.args.get('file')
@@ -161,19 +167,16 @@ def share_file():
 @app.route('/delete_file')
 def delete_file():
     """ This route handler will allow users to delete files.
-
         If the file is '*' all user files are deleted
     """
 
     username = request.cookies.get('username')
-    userpass = request.cookies.get('username:password')
-    if not userpass: return redirect(url_for('login'))
+    if (logged_user != username) : 
+        raise Exception("Illegal change of cookies!")
+    if not username: return redirect(url_for('login'))
     path = configuration['web_root'] + "/" + username
 
     user_file = request.args.get('file')
-    
-    # laitettu checkPath tarkistamaan polkuinjektion varalta
-    checkPath(configuration['web_root'] + "/" + username + "/" + user_file)
 
     if user_file == '*':
         files = os.listdir(path)
@@ -202,13 +205,13 @@ def delete_file():
 @app.route('/upload_file', methods=['GET', 'POST'])
 def upload_file():
     """ This route handler will allow users to upload files
-
         If the request method is POST file is being uploaded. Otherwise
         we show a file upload prompt
     """
     username = request.cookies.get('username')
-    userpass = request.cookies.get('username:password')
-    if not userpass: return redirect(url_for('login'))
+    if (logged_user != username) : 
+        raise Exception("Illegal change of cookies!")
+    if not username: return redirect(url_for('login'))
     path = configuration['web_root'] + "/" + username
 
     if request.method == 'POST':
@@ -223,16 +226,18 @@ def upload_file():
             checkPath(thefile.filename)
             target_path = path + '/' + thefile.filename
 
+            clean_path = bleach.clean(target_path)
+
             # Mark the fle initially as suspicious. The checker thread will
             # remove this flag
             suspicious_file_log.add(thefile.filename)
 
-            thefile.save(target_path)
+            thefile.save(clean_path)
             thefile.close()
 
             # The checker is slow so we run it in a background thread
             # for better user experience
-            checker_queue.put(target_path)
+            checker_queue.put(clean_path)
             return redirect(url_for('serve_file'))
     return '''
     <!doctype html>
@@ -250,13 +255,13 @@ def upload_file():
 @app.route('/user_content')
 def serve_file():
     """ This route allows fetching user files
-
         If user gives a filename that file is sent to user, otherwise
         user is shown a file listing
     """
     username = request.cookies.get('username')
-    userpass = request.cookies.get('username:password')
-    if not userpass: return redirect(url_for('login'))
+    if (logged_user != username) : 
+        raise Exception("Illegal change of cookies!")
+    if not username: return redirect(url_for('login'))
 
     user_file = request.args.get('file')
     if user_file:
@@ -264,7 +269,7 @@ def serve_file():
         if shared:
             return send_file(shared)
         else:
-            path = configuration['web_root'] + '/' + username + "/" + user_file 
+            path = configuration['web_root'] + '/' + username + "/" + user_file
             checkPath(path)
             return send_file(path)
     else:
@@ -277,11 +282,9 @@ def serve_file():
             % (f, f, f, f) for f in files
             if not f in suspicious_file_log  # Remove suspicious files
         ])
-        
 
-        shared_list = "\n".join([
-            """<a href='/user_content?file=%s'>%s</a>
-            """
+        shared_list = json.dumps([
+            """<a href='/user_content?file=%s'>%s</a>"""
             % (f,f) for f in shared_files
             if not f in suspicious_file_log  # Remove suspicious files
         ])
@@ -289,7 +292,7 @@ def serve_file():
         rejects = ""
         if bad_file_log:
             rejects = ("<h1>Some files were rejected</h1>"
-                       "<p>" + "\n".join(bad_file_log) + "</p>")
+                       "<p>" + json.dumps(list(bad_file_log)) + "</p>")
         return '''
             <!doctype html>
             <title>Files:</title>
@@ -305,4 +308,4 @@ def serve_file():
             </form>
             <br>
             <a href="/logout">log out</a>
-            ''' % (link_list, rejects,shared_list)
+            ''' % (link_list, rejects, shared_list)

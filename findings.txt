@@ -1,9 +1,11 @@
 ## Harjoitustyöraportti
 
 Palauttaja: Elena Mironenko, elemiron
-Pisteitä yhteensä: 2pt (?) 
+Pisteitä yhteensä: 2pt (? En ole varma mitä voin laskea pisteiksi ja ovatko ne oikeat....) 
+Pvm: 16.11.2022
 
 ## Ongelma 1
+
 Tyyppi:   Polkuinjektio
 Sijainti: delete_file()
 Kuvaus:
@@ -31,245 +33,216 @@ eikä mitään poisteta.
 
 ### Pisteet(2pt)
 
-1pt vian löytämisestä
-1pt vian korjaamisesta
-
-
-...
-
+----------------------------------------------------------------------------------------------------------------
 
 ## Ongelma 2
-Tyyppi:   Shell-injektio
-Sijainti: checkerLoop(queue)
-Kuvaus:	  
 
-Aliohjelmassa avataan komentotulkki, jonka kautta avataan tiedosto.
-Aliohjelmassa tarkastetaan vain, että tiedostossa on "JPG" tai "PNG", 
-mutta se ei estä putkittamista tiedoston nimessä. Se ei myöskään
-estä tälläisen tiedoston lataamista ja jakamista sovelluksessa.
+Tyyppi:   Shell-injektio
+Sijainti: Aliohjelma checkerLoop
+Kuvaus: 
+
+CheckerLoop käynnistää shellin tarkistaakseen tiedoston tyypin. Tämä on ongelma, koska
+vihamielinen käyttäjä pystyy tiedoston nimen avulla käskyttämään shelliä haluamallaan tavalla.
 
 ### Esimerkkihyökkäys: 
 
-1) Kirjaudu sisään käyttäjänä "sam".
-2) Lataa tietokoneelta tiedosto, jonka nimi on "kissa.jpg;rm *"
-3) Tulos: Koko ohjelma lakkaa olemasta. Kaikki tiedostot hakemistossa
-CourseWork poistuu.
+1) Kirjaudu sisään
+2) Lataa kuva jonka tiedoston nimi sisällään esimerkiksi putkitetun shell käskyn
+    "kuva.png;echo laavakivi"
+3) shelliin ilmestyy laavakivi
 
 ### Korjaus:
 
-Commit: <git hash>
+Commit: 4bd62bded56dc9747f357ae94fe6bfd00b51557c
 
-Paikka, johon korjaus on tehty, on kommentoitu koodiin. Korjasin tämän
-kohdan laittamalla komennot taulukkoon ja poistamalla ehdon "shell=True".
-Korjaus toimii, koska tiedostonimissä olevia putkituksia ei enään suoriteta
-komentotulkissa. Vikatyyppi on myös eliminoitu, sillä shell-injektiota ei 
-enään pysty tapahtumaan.
+Merkkijonon sijasta lähetetään rakenteisen listan file prosessille.
+Eli koodi hyödyntää erillistä kirjastoa, joka tarkistaa tiedoston tyypin.
+Korjaus toimii, koska shelliä ei avata ollenkaan, vaan tiedoston tyyppi tarkistetaan erillistä kirjastoa hyödyntäen.
 
 ### Pisteet(3pt)
 
-1pt vian löytämisestä
-1pt vian korjaamisesta
-1pt vikatyypin eliminoimisesta
-
-
-...
-
+----------------------------------------------------------------------------------------------------------------
 
 ## Ongelma 3
-Tyyppi:   Eväste-haavoittuvuus
-Sijainti: login()
-Kuvaus:
 
-Ohjelmalla ei ole väliä, mistä pyynnöt palvelimelle tulevat. Curlia ja oikeaa 
-evästettä käyttämällä pääsee tekemään sovelluksessa mitä tahansa kenä tahansa käyttäjänä.
-Curlia käyttäessä salasanaa ei kysytä.
+Tyyppi:   Polkuinjektio
+Sijainti: checkPath()-aliohjelma
+Kuvaus: 
+
+Aliohjelmassa tarkistetaan ainoastaan sisältääkö polku merkkijonon "../". Tämä ei riitä polkuinjektio hyökkäystä vastaan.
 
 ### Esimerkkihyökkäys: 
 
-1) Tee palvelimelle pyyntö komentotulkilla: 
-curl 'http://localhost:5000/delete_file?file=*' -H 'Cookie: username=sam'
-2) Tulos: kaikki käyttäjän sam tiedostot tuhoutuvat
+1) Kirjaudutaan sisään
+2) Hae urlista tai komentorivillä ilman selainta haku, johon sisältyy suhteellinen polku, eli '../'-enkoodattuna tai
+'./'-
+3) "Hyökkääjä" pääsee käsiksi tiedostorakenteisiin, joihin hänellä ei tulisi olla pääsyä
 
 ### Korjaus:
 
-Commit: <git hash>
+Commit: f3306a89ba6ee32afa36ed289072719fde3daa3a
 
-Korjaus on tehty yksinkertaisesti laittamalla yhdistelmä käyttäjätunnuksesta ja 
-salasanasta cookieen. Oikeasti salasanaa ei saisi laittaa paljaana cookieseen, vaan 
-se pitäisi hashata jollakin tavalla, mutta tässä ei esimerkin yksinkertaisuuden
-vuoksi ole sitä tehty. Nyt kuitenkaan ei päästä tekemään muista lähteistä, kuin käytössä
-olevasta selaimesta kenä tahansa käyttäjänä tietämättä salasanaa.
-Korjaus toimii, koska salasanaa pitää aina käyttää, kun halutaan yhteys jonkin käyttäjän
-tiedostoihin. Korjaus on tehty kaikkiin kohtiin, joissa kysytään cookieta 'username'. Sen
-sijaan, että aliohjelmissa kysytään username cookieta autentisoimaan käyttäjää, käytetään
-username:password cookieta.
+Korjaus tapahtuu siten, että normalisoidaan polun checkPath()-aliohjelmassa ja verrataan tätä syötettyyn polkuun. Jos polut eroavat toisistaan,
+voi varmuudella heittää pathInjection-exceptionia.
+Näin se ei päästä läpi suhteellisia polkuja.
 
-### Pisteet(2pt)
-
-1pt vian löytämisestä
-1pt vian korjaamisesta
+### Pisteet(3pt)
 
 
-...
-Vähän lisää edelliseen..
-...
+----------------------------------------------------------------------------------------------------------------
+
 
 ## Ongelma 4
-Tyyppi:  Eväste-haavoittuvuus
-Sijainti: logout() ja login()
 
-rivi 76  resp.set_cookie('username', username)
-rivi 120  resp.set_cookie('username', expires=0)
+Tyyppi:  XSS-injektio
+Sijainti: upload_file-Aliohjelmassa
+Kuvaus: 
 
+Tiedoston nimellä voidaan vaikuttaa html rakenteeseen ja sijoittaa sekaan ilkeämilinen scripti.
 
-Kuvaus:
-Evästeen HttpOnly on oletusarvoisesti asetettu arvoon False eikä erikseen laitettu True. 
-False tarkoittaa sitä, että käyttäjä voi tehdä sivustojen välisiä komentosarjahyökkäyksiä, joissa hyökkääjä pääsee käsiksi arkaluontoisiin istuntotietoihin ja käyttää näitä tietoja huijatakseen laillisia verkkopohjaisia ​​sovelluksia paljastamaan luottamuksellisia tietoja tai hyväksymään laittomia pyyntöjä. Myöskään ei asetettu secure attribuuttia, jolloin hyökkääjä saattaa pystyä sieppaamaan kyseisen evästeen. Kun hyökkääjällä on nämä tiedot, hän voi mahdollisesti esiintyä käyttäjänä, päästä käsiksi luottamuksellisiin tietoihin ja suorittaa toimintoja, joihin heillä ei normaalisti olisi lupaa.
+### Esimerkkihyökkäys: 
 
-
-### Esimerkkihyökkäys:
-
-
+1) Kirjaudu sisään
+2) Lataa tiedosto jonka tiedostonimessä on html:ää, esimerkiksi tiedostonimi voisi olla "<button onmouseover="alert("HACK!")>".
+3) Tiedoston nimi muokkaa sivuston rakennetta merkittävästi ja tässä esimerkissä lisää sivustolle javascriptiä.
 
 ### Korjaus:
 
-Commit: <git hash>
+Commit: b51f6935c49d099c01e387d5d7ca2c3439ea4b52
 
-resp = Response(status=301, headers={"location": url_for('index')})
-resp.set_cookie('forget_sid', session.id,
-    max_age=60*60*48,
-    httponly=True,
-    secure=app.config.get("HTTPS"))
- return resp
- 
- 
+Koodiin lisätään "bleach"-nimisen kirjaston, joka hoitaa käyttäjän syötteen, tässä tapauksessa tiedoston nimen sanitoimisen. 
+Bleachin clean()-metodi enkoodaa tiedostonimen suotuisaan muotoon näin estetään XSS-injektio.
 
-### Pisteet(2pt)
-1pt vian löytämisestä
-1pt vian korjaamisesta
+### Pisteet(3pt)
 
 
-...
+----------------------------------------------------------------------------------------------------------------
 
 
 ## Ongelma 5
-Tyyppi:   XSS
-Sijainti: checkerLoop(queue)
-Kuvaus:
 
-Ohjelmassa tarkistetaan vain, onko tiedoston sisältö kuvadataa, mutta se ei suojaa
-HTML-injektiolta kuvien nimissä.
+Tyyppi:  Cookievirhe
+Sijainti: serve_file-, delete_file-, upload_file- ja share_file-aliohjelmassa, eli kaikkialla, missä kutsutaan
+         " request.cookies.get('username') " -komentoa
+Kuvaus: 
 
-### Esimerkkihyökkäys:
+Esimerkiksi Chromen developer toolssia hyödyntämällä voidaan editoida(vaihtaa) käyttäjänimen cookien arvoa.
+        Esimerkiksi "samina" kirjautuneena voidaan tähän vaihtaa "sue" ja päästä käsiksi hänen tiedostoihin ja niiden
+        poistamiseen, jakamiseen ja lataamiseen.
 
-1) Vaihda kuvan "kissa.jpg" nimeksi sopiva HTML-injektio, esim. <button onmouseover="alert(1)">
-2) Lataa kuva palveluun.
-3) Kuva poistetaan, mutta se tulee poistettujen kuvien listaan ja voi rikkoa koko palvelun.
+### Esimerkkihyökkäys: 
+
+1) Kirjaudu sisään samina
+2) Avaa etusivulla developer tools ja muuta application välilehden alta value sarakkeesta "sam" -> "sue". Päivitä sivu
+3) Vapaa pääsy suen tiedostoihin
 
 ### Korjaus:
+Commit: e5e6836b0c4a22dc69b3b57aff6152f06ad16696
 
-Commit: <git hash>
+Korjasimme tämän lisäämällä lähdekoodiin globaalin muuttujan, joka pitää sisällään tietoa siitä, kuka on kirjautunut
+sisään viimeksi. 
 
-Korjaus on tehty yksinkertaisesti niin, että tiedostoja, joissa on merkki '<' ei voi  
-ladata. Korjaus toimii, koska nyt ei pystytä tekemään tiedostonimiä, joissa  
-XSS olisi mahdollista, sillä aloittavaa tagiä ei voida käyttää. 
+Tämä korjaus toimii, koska jos sivustolla yrittää tehdä mitä vaan, kun cookien arvo on eriävä viimeksi kirjautuneen kanssa,
+niin järjestelmä kaatuu ja heittää poikkeuksen, jossa kerrotaan, että on koitettu käyttää cookiesseja väärin.
 
 ### Pisteet(2pt)
 
-1pt vian löytämisestä
-1pt vian korjaamisesta
-
-
-...
+----------------------------------------------------------------------------------------------------------------
 
 
 ## Ongelma 6
-Tyyppi:   Polkuinjektio
 
-Sijainti: 
+Tyyppi:  LogForging
+Sijainti: user_content
+Kuvaus: 
 
-rivi 170  os.remove(path + '/' + file)
-rivi 180  os.remove(configuration['web_root'] + "/" + user_file)
-rivi 218  thefile.save(target_path)
-rivi 252  return send_file(shared)
-rivi 256  return send_file(path)
-
-
-Kuvaus:
-Mahdollisuus käyttää ja manipuloida mielivaltaista polkua johtaa haavoittuvuuksiin, kun ohjelmaa ajetaan sellaisilla oikeuksilla, joita polun tarjoavalla käyttäjällä ei pitäisi olla. Sivusto, jossa on polun läpikulkuhaavoittuvuus, antaisi käyttäjien pääsyn sitä isännöivän palvelimen arkaluonteisiin tiedostoihin. Eli antaa hyökkääjän saada tietoa kansiorakenteesta tai lukea järjestelmän arkaluonteisten tiedostojen sisältöä.
-
-
+Lista hylätyistä tiedostoista laitetaan taulukkoon nimeämällä ne suoraan tiedostonimen mukaan, näin ollen nettisivulle pääsee suoraan käyttäjän syötettä.
 
 ### Esimerkkihyökkäys:
-
-
+ 
+1) Kirjaudu sisään
+2) Lisää sivulle tiedostoja, jotka eivät mene läpi .png tai .jpg testistä tai jaa "sopiva" tiedosto
+3) Mahdollisuus tietyllä syötteellä väärentää hylättyjen tai jaettujen tiedostojen määrää.
 
 ### Korjaus:
 
-Commit: <git hash>
+Commit: 65537fc33dcd249f8e6d8b91baa8a7cff4f05a2d
 
-if request.method == "POST":
-    try:
-        f = request.files['file']
-        filename = secure_filename(f.filename)
-        f.save(filename)
-        with open(filename, "r", encoding="utf-8") as f:
-            success, errors = words_validate(f.read())
-  
+Korjaus tapahtuu käyttämällä rakenteista dataa. Eli jokainen hylätty tiedosto tulee olemaan rakenteista dataa, eikä ainoastaan merkkijonoja peräkkäin.
+
+### Pisteet(3pt)
 
 
-task_type = 1
-
-if len(request.files) == 0:
-
-    task_type = 1
-
-task_type = 2
-upload_src = request.files['file']
-filename = str(int(time.time())) + '_' + secure_filename(upload_src.filename)
-filepath = 'uploads/' + filename
-upload_src.save(filepath)
-
-
-
-### Pisteet(2pt)
-1pt vian löytämisestä
-1pt vian korjaamisesta
-
-
-...
-
+----------------------------------------------------------------------------------------------------------------
 
 ## Ongelma 7
-Tyyppi: Uudelleenohjaus
-Sijainti: upload_file()
+Tyyppi: Url tietoturva
+Sijainti: Login succesfull url
+Kuvaus: 
 
-rivi 205  return redirect(request.url)
-rivi 209  return redirect(request.url)
-	
-Kuvaus:
-Puhdistamaton syöttö pyynnön URL-osoitteesta siirtyy kohtaan flask.redirect , jossa sitä käytetään URL-osoitteena käyttäjän uudelleenohjaamiseen. Tämä voi johtaa Open Redirect -haavoittuvuuteen. Jos resurssi on esimerkiksi siirtynyt uuteen paikkaan, URL-uudelleenohjaus voi siirtää käyttäjän kyseiseen sijaintiin virheilmoituksen näyttämisen sijaan. Tätä kykyä voidaan kuitenkin hyödyntää sosiaalisen manipuloinnin avulla, mikä huijaa käyttäjät uskomaan, että he käyttävät yhtä sivustoa, kun todellisuudessa hänet ohjataan vaaralliselle sivustolle, kuten tietojenkalastelusivustolle. 
+Login:n jälkeen näkee salasanan ja käyttäjänimen sivun syötteessä
+
+### Esimerkkihyökkäys: 
+
+1) Kirjaudu sisään
+2) Jätä login succesfull näkyville
+3) Pahaa tahtova taho voi nähdä käyttäjänimen ja salasanan login succesfull sivun url:ssa 
+   ja kirjautua sinuna myöhemmin sisään
+
+### Korjaus:
+
+commit: 7d0c425a46882e6ea27739fb281648c46a4712f5
+
+Mahdollisesti voisi toimia se, että succesfull sivua ei tulisi ollenkaan vaan ohjelma siirtyisi suoraan onnistuneen kirjautumisen jälkeen käyttäjän tietoihin.
+
+### Pisteet(1pt)
 
 
+----------------------------------------------------------------------------------------------------------------
 
-### Esimerkkihyökkäys:
+## Ongelma 8
+Tyyppi: Tietoturvaongelma
+Sijainti: Käyttäjänimen ja salasanan kovakoodaus
+Kuvaus: 
 
+Lähdekoodiin on kovakoodattu kaikki käyttäjätunnukset ja salasanat, joten lähdekoodin haltija pääsee käsiksi kaikkiin käyttäjiin.
+
+### Esimerkkihyökkäys: 
+
+1) Pääse käsiksi lähdekoodiin, hyökkäämällä tai vahingossa.
+2) Lähdekoodista pääsee käsiksi kaikkien käyttäjien kirjautumistietoihin
+
+### Korjaus:
+
+Commit: 84e0301fc1d795a9b38a7590acbe5cb508631703
+
+Käyttäjänimet ja salasanat voisi siirtää tietokantaan ja salaamalla ne.
+
+### Pisteet(1pt)
+
+
+----------------------------------------------------------------------------------------------------------------
+
+## Ongelma 9
+
+Tyyppi: riippuvuussuhdehyökkäys
+Sijainti: Lähdekoodi
+Kuvaus: 
+
+Lähdekoodiin on importattu paketteja, joita ei ole itse sinne importattu. 
+Kenties myöskin haittallisia paketteja....
+
+### Esimerkkihyökkäys: 
+
+1) Lataa paketti, joka sisältää haitallista koodissa.
+2) Paketin haitallinen koodi aiheuttaa haavoittuvuuden. 
 
 
 ### Korjaus:
 
-Commit: <git hash>
+Tarkistetaan paketit(?)
 
-Vähintään pitäisi ilmoittaa että käyttäjä on siirtymässä toiselle sivustolle.
+Commit: 330fa7258ee167f640e29fa2d9044543be122317
 
-@app.route('/<reponame>/comment', methods=['POST'])
-def comment(reponame):
-    comment = request.form.get('comment')
-    add_comment(reponame, comment)
-    return redirect(url_for('heso', reponame=reponame))
 
-  
 ### Pisteet(1pt)
-1pt vian löytämisestä
-
-------------------------------------------------------------------------------------------------------------------
